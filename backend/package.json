@@ -1,0 +1,20 @@
+{
+  "name": "music-edu-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mongoose": "^6.10.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "config": {
+    "proxy": null,
+    "https-proxy": null,
+    "registry": "https://registry.npmjs.org/"
+  }
+}
