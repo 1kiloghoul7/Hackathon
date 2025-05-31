@@ -2,14 +2,24 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const storedUser = JSON.parse(localStorage.getItem('user'));
+
+function getPracticeTimeString() {
+  let seconds = 0;
+  try {
+    seconds = parseInt(localStorage.getItem('drumPracticeSeconds') || '0', 10);
+  } catch (e) { seconds = 0; }
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 const user = storedUser ? {
   name: storedUser.firstName + ' ' + storedUser.lastName,
   ...storedUser,
   progress: 65,
-  practiceTime: '24h 30m',
+  practiceTime: getPracticeTimeString(),
   coursesCompleted: 3,
   skillLevel: 'Intermediate',
-  communityRank: 127,
   continueLearning: [
     {
       icon: '🎸',
@@ -29,19 +39,13 @@ const user = storedUser ? {
       lastAccessed: '3 days ago',
       progress: 60,
     },
-  ],
-  achievements: [
-    { icon: '🏅', title: 'First Lesson Complete', date: 'Yesterday' },
-    { icon: '🔥', title: 'Practice Streak: 7 Days', date: 'Today' },
-    { icon: '🧠', title: 'Theory Master', date: '2 days ago' },
   ],
 } : {
   name: 'User',
   progress: 65,
-  practiceTime: '24h 30m',
+  practiceTime: getPracticeTimeString(),
   coursesCompleted: 3,
   skillLevel: 'Intermediate',
-  communityRank: 127,
   continueLearning: [
     {
       icon: '🎸',
@@ -61,11 +65,6 @@ const user = storedUser ? {
       lastAccessed: '3 days ago',
       progress: 60,
     },
-  ],
-  achievements: [
-    { icon: '🏅', title: 'First Lesson Complete', date: 'Yesterday' },
-    { icon: '🔥', title: 'Practice Streak: 7 Days', date: 'Today' },
-    { icon: '🧠', title: 'Theory Master', date: '2 days ago' },
   ],
 };
 
@@ -76,6 +75,19 @@ const navItems = [
   { label: 'Practice', icon: '🎯', path: '/practice' },
   { label: 'Community', icon: '🌐', path: '/community' },
 ];
+
+function getEnrolledCourses() {
+  const enrolled = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
+  const all = [
+    { id: 'guitar', title: 'Guitar Mastery', icon: '🎸' },
+    { id: 'piano', title: 'Piano Essentials', icon: '🎹' },
+    { id: 'drums', title: 'Drum Pro', icon: '🥁' },
+    { id: 'violin', title: 'Violin Virtuoso', icon: '🎻' },
+    { id: 'flute', title: 'Flute Fundamentals', icon: '🎶' },
+    { id: 'singing', title: 'Singing Star', icon: '🎤' },
+  ];
+  return all.filter(c => enrolled.includes(c.id));
+}
 
 function HomePage() {
   const navigate = useNavigate();
@@ -179,18 +191,21 @@ function HomePage() {
               <span>Overall Progress</span>
               <span style={{ fontSize: 28 }}>{user.progress}%</span>
             </div>
-            <button style={{
-              marginLeft: 12,
-              background: '#fff',
-              color: '#2563eb',
-              border: 'none',
-              borderRadius: 8,
-              fontWeight: 700,
-              fontSize: 18,
-              padding: '12px 32px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px #2563eb22'
-            }}>
+            <button
+              style={{
+                marginLeft: 12,
+                background: '#fff',
+                color: '#2563eb',
+                border: 'none',
+                borderRadius: 8,
+                fontWeight: 700,
+                fontSize: 18,
+                padding: '12px 32px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px #2563eb22'
+              }}
+              onClick={() => navigate('/courses')}
+            >
               Continue Learning
             </button>
           </div>
@@ -202,17 +217,35 @@ function HomePage() {
             <div style={{ fontWeight: 700, fontSize: 22 }}>{user.practiceTime}</div>
           </div>
           <div style={statCardStyle}>
-            <div style={{ fontSize: 15, color: '#888', marginBottom: 6 }}>Courses Completed</div>
-            <div style={{ fontWeight: 700, fontSize: 22 }}>{user.coursesCompleted}</div>
+            <div style={{ fontSize: 15, color: '#888', marginBottom: 6 }}>Courses Enrolled</div>
+            <div style={{ fontWeight: 700, fontSize: 22 }}>{getEnrolledCourses().length}</div>
           </div>
-          <div style={statCardStyle}>
-            <div style={{ fontSize: 15, color: '#888', marginBottom: 6 }}>Skill Level</div>
-            <div style={{ fontWeight: 700, fontSize: 22 }}>{user.skillLevel}</div>
-          </div>
-          <div style={statCardStyle}>
-            <div style={{ fontSize: 15, color: '#888', marginBottom: 6 }}>Community Rank</div>
-            <div style={{ fontWeight: 700, fontSize: 22 }}>#{user.communityRank}</div>
-          </div>
+        </div>
+        {/* Enrolled Courses Row */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 16 }}>Your Enrolled Courses</div>
+          {getEnrolledCourses().length === 0 ? (
+            <div style={{ color: '#888', fontSize: 16 }}>You have not enrolled in any courses yet.</div>
+          ) : (
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              {getEnrolledCourses().map(course => (
+                <div key={course.id} style={{
+                  background: '#fff',
+                  borderRadius: 14,
+                  boxShadow: '0 2px 8px #2563eb11',
+                  padding: '24px 20px',
+                  minWidth: 180,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <span style={{ fontSize: 36 }}>{course.icon}</span>
+                  <div style={{ fontWeight: 600, fontSize: 17 }}>{course.title}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {/* Main Grid */}
         <div style={{ display: 'flex', gap: 32 }}>
@@ -259,30 +292,6 @@ function HomePage() {
                   }}>
                     Resume
                   </button>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* Achievements */}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 16 }}>Recent Achievements</div>
-            <div style={{
-              background: '#fff',
-              borderRadius: 16,
-              padding: 24,
-              boxShadow: '0 2px 8px #2563eb11'
-            }}>
-              {user.achievements.map((ach, idx) => (
-                <div key={ach.title} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  marginBottom: idx < user.achievements.length - 1 ? 18 : 0
-                }}>
-                  <span style={{ fontSize: 26, marginRight: 14 }}>{ach.icon}</span>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 16 }}>{ach.title}</div>
-                    <div style={{ color: '#888', fontSize: 13 }}>{ach.date}</div>
-                  </div>
                 </div>
               ))}
             </div>

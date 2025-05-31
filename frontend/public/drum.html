@@ -788,6 +788,16 @@ Based on this, how can the user improve?`;
                 comparePerformance();
                 document.getElementById('startButton').disabled = false;
                 document.getElementById('resetButton').disabled = false;
+
+                // --- Add this block to track total practice time ---
+                const sessionSeconds = (performance.now() - practiceStartTime) / 1000;
+                let totalSeconds = 0;
+                try {
+                  totalSeconds = parseInt(localStorage.getItem('drumPracticeSeconds') || '0', 10);
+                } catch (e) { totalSeconds = 0; }
+                totalSeconds += Math.round(sessionSeconds);
+                localStorage.setItem('drumPracticeSeconds', totalSeconds.toString());
+                // --- End block ---
             }, `+${rhythmDuration}s`); // Use relative time for scheduling the end
         }
 
@@ -825,6 +835,11 @@ Based on this, how can the user improve?`;
             currentTargetRhythm = generateRandomRhythm(); // Generate initial rhythm
             createRhythmIndicators(); // Create indicators for the initial rhythm
         };
+
+        // Premium check
+        if (localStorage.getItem('premiumUser') !== 'true') {
+            document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:2rem;color:#ef4444;font-family:Inter,sans-serif;">Only premium members allowed</div>';
+        }
     </script>
 </body>
 </html>

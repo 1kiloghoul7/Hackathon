@@ -9,6 +9,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProfilePage from './pages/ProfilePage';
 import CoursesPage from './pages/CoursesPage';
 import CommunityPage from './pages/CommunityPage';
+import CommunityPostsPage from './pages/CommunityPostsPage';
 import PracticePage from './pages/PracticePage';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/community" element={<CommunityPage />} />
+        <Route path="/community/:id" element={<CommunityPostsPage />} />
         <Route path="/practice" element={<PracticePage />} />
       </Routes>
     </Router>
