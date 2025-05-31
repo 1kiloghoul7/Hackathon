@@ -26,6 +26,10 @@ function LoginPage() {
 
       const data = await response.json();
       if (response.ok) {
+        // Save user info to localStorage
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
         navigate('/home');
       } else {
         alert(data.message || 'Login failed');

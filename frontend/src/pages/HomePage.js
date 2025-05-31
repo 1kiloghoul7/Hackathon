@@ -1,7 +1,42 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const user = {
-  name: 'Alex Johnson',
+const storedUser = JSON.parse(localStorage.getItem('user'));
+const user = storedUser ? {
+  name: storedUser.firstName + ' ' + storedUser.lastName,
+  ...storedUser,
+  progress: 65,
+  practiceTime: '24h 30m',
+  coursesCompleted: 3,
+  skillLevel: 'Intermediate',
+  communityRank: 127,
+  continueLearning: [
+    {
+      icon: '🎸',
+      title: 'Guitar Fundamentals',
+      lastAccessed: '2 hours ago',
+      progress: 75,
+    },
+    {
+      icon: '📚',
+      title: 'Music Theory Basics',
+      lastAccessed: '1 day ago',
+      progress: 45,
+    },
+    {
+      icon: '🎹',
+      title: 'Piano Techniques',
+      lastAccessed: '3 days ago',
+      progress: 60,
+    },
+  ],
+  achievements: [
+    { icon: '🏅', title: 'First Lesson Complete', date: 'Yesterday' },
+    { icon: '🔥', title: 'Practice Streak: 7 Days', date: 'Today' },
+    { icon: '🧠', title: 'Theory Master', date: '2 days ago' },
+  ],
+} : {
+  name: 'User',
   progress: 65,
   practiceTime: '24h 30m',
   coursesCompleted: 3,
@@ -43,6 +78,11 @@ const navItems = [
 ];
 
 function HomePage() {
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc', fontFamily: 'Inter, Arial, sans-serif' }}>
       {/* Sidebar */}
@@ -89,28 +129,23 @@ function HomePage() {
         {/* Top Bar */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
           <div style={{ fontWeight: 700, fontSize: 26, color: '#2563eb', marginRight: 32 }}>MusicEd Pro</div>
-          <input
-            type="text"
-            placeholder="Search courses, lessons..."
+          <div style={{ flex: 1 }} />
+          <button
+            onClick={handleLogout}
             style={{
-              flex: 1,
-              padding: '10px 18px',
+              background: '#ef4444',
+              color: '#fff',
+              border: 'none',
               borderRadius: 8,
-              border: '1px solid #e5e7eb',
-              fontSize: 16,
-              marginRight: 32,
-              background: '#f3f4f6'
+              fontWeight: 700,
+              fontSize: 15,
+              padding: '8px 18px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px #ef444422'
             }}
-          />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontWeight: 600, fontSize: 16 }}>{user.name}</div>
-            <div style={{
-              width: 38, height: 38, borderRadius: '50%',
-              background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="profile" style={{ width: 34, height: 34, borderRadius: '50%' }} />
-            </div>
-          </div>
+          >
+            Logout
+          </button>
         </div>
         {/* Welcome Card */}
         <div style={{

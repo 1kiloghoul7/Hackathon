@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Drum Pad Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background-color: #2d3748; /* Slightly lighter dark background */
+            border-radius: 1rem; /* Rounded corners */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .drum-pads {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Base drum-pad styling - specific colors will be added via JS */
+        .drum-pad {
+            color: #cbd5e0;
+            padding: 1.5rem 1rem;
+            border-radius: 0.75rem; /* More rounded corners */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s ease-out, background-color 0.1s ease-out, box-shadow 0.1s ease-out;
+            user-select: none; /* Prevent text selection */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .drum-pad:active, .drum-pad.active {
+            transform: scale(0.95);
+            background-color: #63b3ed; /* Blue on active */
+            color: #1a202c;
+            box-shadow: 0 0 0 3px #63b3ed, 0 0 10px #63b3ed; /* Glow effect */
+        }
+
+        .drum-pad-key {
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            color: #a0aec0;
+        }
+
+        .target-rhythm-display {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+
+        .rhythm-indicator-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .rhythm-indicator {
+            width: 30px; /* Slightly larger */
+            height: 30px; /* Slightly larger */
+            background-color: #4a5568; /* Default background */
+            border-radius: 0.25rem;
+            transition: background-color 0.1s ease-out;
+            border: 1px solid #63b3ed;
+            display: flex; /* To center content if any */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rhythm-indicator.active {
+            background-color: #f6ad55; /* Orange for active target */
+            box-shadow: 0 0 0 2px #f6ad55; /* Glow effect */
+        }
+
+        .rhythm-indicator-key {
+            font-size: 0.75rem; /* Smaller font for the key */
+            color: #a0aec0;
+            font-weight: 600;
+        }
+
+        .feedback-area {
+            min-height: 80px;
+            background-color: #2d3748;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1rem;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        /* Added specific styling for markdown content within feedback-area */
+        .feedback-area .ai-feedback-content {
+            text-align: left; /* Align text left within the feedback content */
+            width: 100%;
+            max-width: 600px; /* Limit width for readability */
+        }
+
+        .feedback-area .ai-feedback-content p {
+            margin-bottom: 0.75rem; /* Space between paragraphs */
+        }
+
+        .feedback-area .ai-feedback-content ul {
+            list-style-type: disc; /* Bullet points for lists */
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feedback-area .ai-feedback-content ul li {
+            margin-bottom: 0.25rem;
+        }
+
+
+        .feedback-message {
+            font-weight: 600;
+        }
+
+        /* ai-feedback-message now acts as a container for Markdown content */
+        .ai-feedback-message {
+            font-style: normal; /* Override italic, as markdown will control style */
+            color: #e2e8f0; /* Default text color, markdown will add bold etc. */
+            /* No specific padding/margin here, let the inner markdown elements handle it */
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #4299e1;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .user-id-display {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: #a0aec0;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .drum-pads {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .drum-pad {
+                padding: 1rem 0.5rem;
+                font-size: 1rem;
+            }
+            .drum-pad-key {
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-4">AI Drum Pad Trainer</h1>
+
+        <div class="target-rhythm-display" id="targetRhythmDisplay">
+            </div>
+
+        <div class="drum-pads" id="drumPads">
+            </div>
+
+        <div class="button-group">
+            <button id="startButton" class="px-8 py-4 rounded-2xl text-xl font-bold shadow-lg transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 hover:bg-green-700 text-white">Start Practice</button>
+            <button id="resetButton" class="px-8 py-4 rounded-2xl text-xl font-bold shadow-lg transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700 text-white" disabled>Reset</button>
+        </div>
+
+        <div class="feedback-area" id="feedbackArea">
+            <p class="feedback-message" id="realtimeFeedback">Press "Start Practice" to begin or hit a key to enable audio!</p>
+            <div class="ai-feedback-message ai-feedback-content" id="aiFeedback"></div>
+        </div>
+        <div class="user-id-display" id="userIdDisplay"></div>
+    </div>
+
+    <script>
+        // Global variables for Firebase configuration, provided by the Canvas environment.
+        // If running outside Canvas, these will be undefined, so provide a default.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Display the user ID (conceptual, as Firebase is not fully initialized here)
+        // In a real Firebase app, this would be auth.currentUser?.uid
+        document.getElementById('userIdDisplay').textContent = `App ID: ${appId}`;
+
+        // Global flag to track if audio context has been started by a user gesture
+        let audioContextStartedByGesture = false;
+
+        // Tone.js setup and drum sound mapping
+        let drumSounds = {};
+        let drumPadMap = {
+            'a': { name: 'Kick', colorClass: 'bg-red-500' }, // A key
+            's': { name: 'Snare', colorClass: 'bg-orange-500' }, // S key
+            'k': { name: 'Hi-Hat', colorClass: 'bg-yellow-500' }, // K key (replaces D)
+            'l': { name: 'Tom', colorClass: 'bg-green-500' }, // L key (replaces F)
+            'g': { name: 'Cymbal', colorClass: 'bg-blue-500' } // G key
+        };
+        // Use Object.keys to get the actual `event.key` strings for drum pads
+        const drumKeys = Object.keys(drumPadMap);
+
+        // Function to initialize Tone.js instruments (synths only, not starting context)
+        async function initializeSynths() {
+            if (Object.keys(drumSounds).length > 0 && drumSounds['a']) { // Check if at least one synth is initialized
+                console.log('Drum sounds already initialized.');
+                return; // Prevent re-initialization
+            }
+
+            // Kick drum: MembraneSynth for a punchy low sound
+            drumSounds['a'] = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 10,
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.4,
+                    sustain: 0.01,
+                    release: 1.4,
+                    attackCurve: "exponential"
+                }
+            }).toDestination();
+            console.log('Kick (A) synth initialized:', drumSounds['a']);
+
+            // Snare drum: NoiseSynth for the snare sound, combined with a MembraneSynth for the body
+            const snareNoise = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.2,
+                    sustain: 0.05,
+                    release: 0.3
+                }
+            }).toDestination();
+            const snareBody = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 5,
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.2,
+                    sustain: 0.01,
+                    release: 0.5
+                }
+            }).toDestination();
+            drumSounds['s'] = (time) => {
+                snareNoise.triggerAttackRelease("8n", time);
+                snareBody.triggerAttackRelease("C2", time);
+            };
+            console.log('Snare (S) custom sound function initialized.');
+
+            // Hi-Hat: NoiseSynth with a short decay
+            drumSounds['k'] = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.05,
+                    sustain: 0.01,
+                    release: 0.05
+                }
+            }).toDestination();
+            console.log('Hi-Hat (K) synth initialized:', drumSounds['k']);
+
+            // Tom: MembraneSynth with a slightly longer decay
+            drumSounds['l'] = new Tone.MembraneSynth({
+                pitchDecay: 0.08,
+                octaves: 7,
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.6,
+                    sustain: 0.01,
+                    release: 1.0,
+                    attackCurve: "exponential"
+                }
+            }).toDestination();
+            console.log('Tom (L) synth initialized:', drumSounds['l']);
+
+            // Cymbal: NoiseSynth with a long decay and filter
+            drumSounds['g'] = new Tone.NoiseSynth({
+                noise: { type: 'pink' },
+                envelope: {
+                    attack: 0.001,
+                    decay: 1.5,
+                    sustain: 0.01,
+                    release: 2.0
+                },
+                filter: {
+                    Q: 0.5,
+                    type: 'highpass',
+                    frequency: 1000
+                }
+            }).toDestination();
+            console.log('Cymbal (G) synth initialized:', drumSounds['g']);
+
+            console.log('All drum sounds initialized');
+        }
+
+        // Function to ensure the Tone.js audio context is running
+        async function ensureAudioContextStarted() {
+            if (!audioContextStartedByGesture && Tone.context.state !== 'running') {
+                try {
+                    await Tone.start();
+                    audioContextStartedByGesture = true;
+                    console.log('Audio context started by user gesture.');
+                    document.getElementById('realtimeFeedback').textContent = 'Audio enabled. Ready to practice!';
+                } catch (error) {
+                    document.getElementById('realtimeFeedback').textContent = 'Failed to start audio. Please allow audio playback in your browser.';
+                    console.error('Error starting Tone.js audio context:', error);
+                }
+            }
+        }
+
+        // Dynamically create drum pads
+        const drumPadsContainer = document.getElementById('drumPads');
+        function createDrumPads() {
+            drumPadsContainer.innerHTML = ''; // Clear existing pads
+            drumKeys.forEach(key => {
+                const padInfo = drumPadMap[key];
+                const padElement = document.createElement('div');
+                padElement.id = `pad-${key}`;
+                // Apply the colorClass directly
+                padElement.className = `drum-pad ${padInfo.colorClass}`;
+                // Display the user-friendly key name
+                padElement.innerHTML = `
+                    <span class="drum-pad-name">${padInfo.name}</span>
+                    <span class="drum-pad-key">${key.toUpperCase()}</span>
+                `;
+                // Add event listeners for both mouse and touch
+                padElement.addEventListener('mousedown', () => playDrum(key));
+                padElement.addEventListener('mouseup', () => removeActiveState(key));
+                padElement.addEventListener('touchstart', (e) => { e.preventDefault(); playDrum(key); }); // Prevent default touch behavior
+                padElement.addEventListener('touchend', (e) => { e.preventDefault(); removeActiveState(key); });
+                padPads[key] = padElement; // Store reference to the DOM element
+                drumPadsContainer.appendChild(padElement);
+            });
+        }
+
+        let padPads = {}; // Store references to pad elements
+
+        // Play drum sound and apply visual feedback
+        async function playDrum(key) {
+            await ensureAudioContextStarted(); // Ensure audio context is running on first interaction
+
+            // If audio context is still not running after attempt, return
+            if (Tone.context.state !== 'running') {
+                console.warn('Audio context not running. Cannot play sound.');
+                return;
+            }
+
+            console.log(`Attempting to play drum: ${key}`);
+            if (drumSounds[key]) {
+                // For MembraneSynth and NoiseSynth, triggerAttackRelease is used
+                // For snare, it's a custom function
+                if (typeof drumSounds[key] === 'function') {
+                    drumSounds[key](Tone.now());
+                } else if (drumSounds[key] instanceof Tone.NoiseSynth) {
+                    drumSounds[key].triggerAttackRelease("8n");
+                } else {
+                    drumSounds[key].triggerAttackRelease("C3", "8n");
+                }
+            } else {
+                console.warn(`No sound defined for key: ${key}. Synths might not be initialized.`);
+            }
+
+            const padElement = padPads[key];
+            if (padElement) {
+                // Temporarily override background color for active state to ensure visibility
+                // The .active class in CSS will handle the blue glow and scale
+                const originalColorClass = drumPadMap[key].colorClass;
+                padElement.classList.remove(originalColorClass); // Remove original color
+                padElement.classList.add('active'); // Add active class for blue
+                // Remove active class after a short delay for visual feedback
+                setTimeout(() => {
+                    padElement.classList.remove('active');
+                    padElement.classList.add(originalColorClass); // Restore original color
+                }, 100);
+            }
+            recordUserHit(key); // Record the user's hit
+        }
+
+        function removeActiveState(key) {
+            // This function is primarily for visual feedback on keyup/touchend
+            // The active class removal is handled by setTimeout in playDrum for a quick flash
+            const padElement = padPads[key];
+            if (padElement) {
+                // No need to explicitly remove 'active' here as playDrum's setTimeout handles it.
+                // This function is kept for consistency with keyup/touchend events.
+            }
+        }
+
+        // Event listeners for keyboard
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (drumKeys.includes(key) && !e.repeat) { // Prevent multiple triggers on hold
+                playDrum(key);
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (drumKeys.includes(key)) {
+                removeActiveState(key);
+            }
+        });
+
+        // Target Rhythm Definition - Now dynamically generated
+        let currentTargetRhythm = [];
+        const minPatternLength = 6; // Minimum number of hits in the random pattern
+        const maxPatternLength = 12; // Maximum number of hits in the random pattern
+
+        // Function to generate a random rhythm pattern
+        function generateRandomRhythm() {
+            const newRhythm = [];
+            const numHits = Math.floor(Math.random() * (maxPatternLength - minPatternLength + 1)) + minPatternLength;
+            let currentTime = 0; // Start time for the first hit
+
+            for (let i = 0; i < numHits; i++) {
+                // Randomly pick a drum key
+                const randomPadKey = drumKeys[Math.floor(Math.random() * drumKeys.length)];
+
+                // Randomly pick a time interval (e.g., quarter, eighth, 16th note)
+                const timeIntervals = ['4n', '8n', '16n']; // Quarter, Eighth, Sixteenth notes
+                const randomInterval = timeIntervals[Math.floor(Math.random() * timeIntervals.length)];
+
+                // Add the hit to the rhythm
+                newRhythm.push({ time: `+${randomInterval}`, pad: randomPadKey }); // Use relative time
+            }
+            return newRhythm;
+        }
+
+        let rhythmDuration = 0; // Will be calculated after rhythm generation
+
+        let targetRhythmIndicators = [];
+        const targetRhythmDisplay = document.getElementById('targetRhythmDisplay');
+
+        function createRhythmIndicators() {
+            targetRhythmDisplay.innerHTML = '';
+            targetRhythmIndicators = [];
+            currentTargetRhythm.forEach((hit, index) => {
+                const padInfo = drumPadMap[hit.pad];
+                const indicatorContainer = document.createElement('div');
+                indicatorContainer.className = 'rhythm-indicator-container';
+                indicatorContainer.title = `${padInfo.name} at ${hit.time}`;
+
+                const indicator = document.createElement('div');
+                // Apply the drum pad's color class to the indicator
+                indicator.className = `rhythm-indicator ${padInfo.colorClass}`;
+
+                const indicatorKeyLabel = document.createElement('span');
+                indicatorKeyLabel.className = 'rhythm-indicator-key';
+                // Display the user-friendly key name
+                indicatorKeyLabel.textContent = hit.pad.toUpperCase();
+
+                indicatorContainer.appendChild(indicator);
+                indicatorContainer.appendChild(indicatorKeyLabel);
+                targetRhythmDisplay.appendChild(indicatorContainer);
+                targetRhythmIndicators.push(indicator); // Store reference to the inner indicator div
+            });
+        }
+
+        // Performance Tracking
+        let userHits = []; // Stores { timestamp: performance.now(), pad: key }
+        let practiceStartTime = 0;
+        let isRecording = false;
+
+        function recordUserHit(key) {
+            if (isRecording) {
+                userHits.push({
+                    timestamp: performance.now(),
+                    pad: key
+                });
+                // Provide immediate feedback on hit
+                const relativeTime = (performance.now() - practiceStartTime) / 1000;
+                checkRealtimeAccuracy(key, relativeTime);
+            }
+        }
+
+        let currentTargetIndex = 0;
+        const toleranceMs = 150; // Tolerance for "on time" in milliseconds
+
+        function checkRealtimeAccuracy(userPad, userRelativeTime) {
+            let feedbackText = '';
+            let foundMatch = false;
+
+            // Check if user hit corresponds to the current or next expected target
+            for (let i = currentTargetIndex; i < currentTargetRhythm.length; i++) {
+                const targetHit = currentTargetRhythm[i];
+                // Need to calculate absolute time for comparison as targetRhythm now uses relative times
+                // For simplicity here, we'll assume the Tone.Sequence handles absolute timing for scheduling
+                // and for comparison, we'll use a simplified approach or rely on the sequence's internal timing.
+                // For accurate comparison, we'd need to pre-calculate absolute times for the random rhythm.
+                // For now, let's use the scheduled time from Tone.Transport.scheduleOnce or Tone.Sequence's internal logic.
+                // Since Tone.Sequence schedules based on relative times, we need to map them to absolute times for comparison.
+                // This is a simplification for the demo. A more robust solution would pre-calculate absolute times.
+
+                // For the purpose of this demo, let's assume `targetTimeInSeconds` is the *expected* absolute time.
+                // Tone.Sequence handles this internally when playing. For user comparison, we need a way to get it.
+                // A simpler approach for the demo: if the user hits *any* of the expected pads within tolerance.
+                // A better approach would involve tracking the absolute scheduled times.
+                // For now, let's use a simplified approach that checks against the current and next few targets.
+
+                // Let's use a simplified check for realtime feedback:
+                // If the user hits the *expected* pad for the *current* target index.
+                if (userPad === targetHit.pad && i === currentTargetIndex) {
+                    // This is a very basic check. Realtime feedback needs more sophisticated timing.
+                    // The full timing analysis happens in comparePerformance.
+                    feedbackText = `Hit on ${drumPadMap[userPad].name}!`;
+                    foundMatch = true;
+                    // We don't advance currentTargetIndex here for real-time, only for post-performance.
+                    break;
+                }
+            }
+
+            if (!foundMatch && isRecording) {
+                feedbackText = `Extra hit on ${drumPadMap[userPad].name}.`;
+            }
+
+            document.getElementById('realtimeFeedback').textContent = feedbackText;
+        }
+
+
+        // Compare user performance against target rhythm
+        function comparePerformance() {
+            // To accurately compare, we need the absolute expected times for the dynamically generated rhythm.
+            // Let's create a helper to calculate these.
+            const bpm = Tone.Transport.bpm.value;
+            const quarterNoteDuration = 60 / bpm; // Duration of a quarter note in seconds
+
+            let absoluteTargetRhythm = [];
+            let currentAbsoluteTime = 0;
+
+            currentTargetRhythm.forEach(hit => {
+                let intervalSeconds = 0;
+                // Parse Tone.js relative time string (e.g., "+4n", "+8n")
+                if (hit.time.startsWith('+')) {
+                    const noteValue = hit.time.substring(1); // e.g., "4n"
+                    switch (noteValue) {
+                        case '4n': intervalSeconds = quarterNoteDuration; break;
+                        case '8n': intervalSeconds = quarterNoteDuration / 2; break;
+                        case '16n': intervalSeconds = quarterNoteDuration / 4; break;
+                        default: intervalSeconds = 0; // Should not happen with defined intervals
+                    }
+                } else {
+                    // If it's an absolute time, convert it
+                    intervalSeconds = Tone.Time(hit.time).toSeconds();
+                }
+
+                currentAbsoluteTime += intervalSeconds;
+                absoluteTargetRhythm.push({
+                    pad: hit.pad,
+                    expectedTimeMs: currentAbsoluteTime * 1000
+                });
+            });
+
+
+            const performanceData = {
+                targetRhythm: absoluteTargetRhythm,
+                userHits: userHits.map(hit => ({
+                    pad: hit.pad,
+                    actualTimeMs: hit.timestamp - practiceStartTime
+                })),
+                overallDurationMs: (performance.now() - practiceStartTime)
+            };
+
+            const results = [];
+            const processedTargetIndices = new Set();
+            const processedUserIndices = new Set();
+
+            // Match user hits to target hits
+            performanceData.userHits.forEach((userHit, userIdx) => {
+                let bestMatch = null;
+                let minTimeDiff = Infinity;
+                let matchedTargetIdx = -1;
+
+                performanceData.targetRhythm.forEach((targetHit, targetIdx) => {
+                    if (!processedTargetIndices.has(targetIdx) && userHit.pad === targetHit.pad) {
+                        const timeDiff = userHit.actualTimeMs - targetHit.expectedTimeMs;
+                        if (Math.abs(timeDiff) < Math.abs(minTimeDiff)) {
+                            minTimeDiff = timeDiff;
+                            bestMatch = targetHit;
+                            matchedTargetIdx = targetIdx;
+                        }
+                    }
+                });
+
+                if (bestMatch && Math.abs(minTimeDiff) <= toleranceMs) {
+                    results.push({
+                        type: 'hit',
+                        pad: userHit.pad,
+                        status: minTimeDiff < -toleranceMs / 2 ? 'early' : (minTimeDiff > toleranceMs / 2 ? 'late' : 'on-time'),
+                        timeDifferenceMs: minTimeDiff
+                    });
+                    processedTargetIndices.add(matchedTargetIdx);
+                    processedUserIndices.add(userIdx);
+                } else {
+                    results.push({
+                        type: 'extra',
+                        pad: userHit.pad,
+                        time: userHit.actualTimeMs
+                    });
+                    processedUserIndices.add(userIdx);
+                }
+            });
+
+            // Identify missed targets
+            performanceData.targetRhythm.forEach((targetHit, targetIdx) => {
+                if (!processedTargetIndices.has(targetIdx)) {
+                    results.push({
+                        type: 'missed',
+                        pad: targetHit.pad,
+                        expectedTimeMs: targetHit.expectedTimeMs
+                    });
+                }
+            });
+
+            console.log("Performance Results:", results);
+            sendToLLMForFeedback(results);
+        }
+
+        // AI Feedback (using Gemini API)
+        let isGeneratingFeedback = false;
+        async function sendToLLMForFeedback(performanceResults) {
+            if (isGeneratingFeedback) return;
+
+            isGeneratingFeedback = true;
+            const feedbackArea = document.getElementById('aiFeedback');
+            feedbackArea.innerHTML = 'Generating AI feedback <span class="loading-spinner"></span>'; // Display spinner
+
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('resetButton').disabled = true;
+
+            let prompt = `Analyze the following drum performance data and provide concise, constructive feedback. Use Markdown formatting (paragraphs, bullet points, bolding) to make it easy to read. Focus on timing accuracy, missed notes, and any extra, unwanted hits. Suggest specific, actionable improvements.
+
+Performance Data:
+${JSON.stringify(performanceResults, null, 2)}
+
+Based on this, how can the user improve?`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = "AIzaSyCjgcaYlWMHhEHTDyN-w_SghgIO6P3V29A"; // Canvas will provide this at runtime if empty
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    // Use marked.parse to convert Markdown to HTML
+                    feedbackArea.innerHTML = marked.parse(text);
+                } else {
+                    feedbackArea.textContent = "AI feedback could not be generated. Please try again.";
+                    console.error("Unexpected API response structure:", result);
+                }
+            } catch (error) {
+                feedbackArea.textContent = "Error generating AI feedback. Please check your connection.";
+                console.error("Error calling Gemini API:", error);
+            } finally {
+                isGeneratingFeedback = false;
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('resetButton').disabled = false;
+            }
+        }
+
+
+        // Practice flow control
+        let targetSequence = null;
+
+        document.getElementById('startButton').addEventListener('click', startPractice);
+        document.getElementById('resetButton').addEventListener('click', resetPractice);
+
+        async function startPractice() {
+            await ensureAudioContextStarted(); // Ensure audio context is running
+
+            if (Tone.context.state !== 'running') {
+                document.getElementById('realtimeFeedback').textContent = 'Audio not ready. Please try clicking "Start Practice" again or interacting with the page.';
+                return;
+            }
+
+            // Generate a new random rhythm for each practice session
+            currentTargetRhythm = generateRandomRhythm();
+            createRhythmIndicators(); // Re-create indicators for the new rhythm
+
+            userHits = [];
+            isRecording = true;
+            practiceStartTime = performance.now();
+            currentTargetIndex = 0; // Reset for realtime feedback
+            document.getElementById('realtimeFeedback').textContent = 'Practice started!';
+            document.getElementById('aiFeedback').innerHTML = ''; // Clear previous AI feedback
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('resetButton').disabled = false;
+
+            // Schedule the target rhythm
+            Tone.Transport.bpm.value = 120; // Set BPM
+            Tone.Transport.start();
+
+            // Calculate the total duration of the generated rhythm
+            // This is a simplified calculation; a more precise one would sum up Tone.Time.toSeconds() for each interval
+            // For now, let's estimate based on the number of hits and average interval
+            rhythmDuration = (currentTargetRhythm.length * (60 / Tone.Transport.bpm.value) * 0.75); // Estimate duration based on average 8th note
+
+            targetSequence = new Tone.Sequence((time, hit) => {
+                // Play the target sound (optional, for guidance)
+                if (drumSounds[hit.pad]) {
+                     if (typeof drumSounds[hit.pad] === 'function') {
+                        drumSounds[hit.pad](time);
+                    } else if (drumSounds[hit.pad] instanceof Tone.NoiseSynth) {
+                        drumSounds[hit.pad].triggerAttackRelease("8n", time);
+                    } else {
+                        drumSounds[hit.pad].triggerAttackRelease("C3", "8n", time);
+                    }
+                }
+
+                // Highlight the corresponding indicator
+                // Find the index of the current hit in the original currentTargetRhythm array
+                const index = currentTargetRhythm.findIndex(item => item.time === hit.time && item.pad === hit.pad);
+                if (targetRhythmIndicators[index]) {
+                    targetRhythmIndicators[index].classList.add('active');
+                    setTimeout(() => {
+                        targetRhythmIndicators[index].classList.remove('active');
+                    }, 200); // Highlight for 200ms
+                }
+            }, currentTargetRhythm, '4n'); // '4n' means each item in targetRhythm is scheduled based on quarter notes
+
+            targetSequence.start(0);
+
+            // Stop recording and get feedback after the rhythm duration
+            Tone.Transport.scheduleOnce(() => {
+                isRecording = false;
+                Tone.Transport.stop();
+                targetSequence.stop();
+                document.getElementById('realtimeFeedback').textContent = 'Practice finished! Analyzing performance...';
+                comparePerformance();
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('resetButton').disabled = false;
+            }, `+${rhythmDuration}s`); // Use relative time for scheduling the end
+        }
+
+        function resetPractice() {
+            if (targetSequence) {
+                targetSequence.stop();
+                targetSequence.dispose(); // Clean up the sequence
+            }
+            Tone.Transport.stop();
+            Tone.Transport.cancel(); // Clear all scheduled events
+
+            userHits = [];
+            isRecording = false;
+            practiceStartTime = 0;
+            currentTargetIndex = 0;
+            document.getElementById('realtimeFeedback').textContent = 'Practice reset. Press "Start Practice" to begin!';
+            document.getElementById('aiFeedback').innerHTML = ''; // Clear previous AI feedback
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('resetButton').disabled = true;
+
+            // Reset visual indicators
+            targetRhythmIndicators.forEach(indicator => {
+                indicator.classList.remove('active');
+            });
+            // Clear the rhythm display after reset
+            targetRhythmDisplay.innerHTML = '';
+        }
+
+        // Initial setup on window load
+        window.onload = function() {
+            createDrumPads();
+            // Initialize synths immediately, but audio context remains suspended until user gesture
+            initializeSynths();
+            // Display a default message or the first random rhythm on load
+            currentTargetRhythm = generateRandomRhythm(); // Generate initial rhythm
+            createRhythmIndicators(); // Create indicators for the initial rhythm
+        };
+    </script>
+</body>
+</html>

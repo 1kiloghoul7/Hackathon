@@ -43,6 +43,10 @@ function SignupPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Save user info to localStorage if available
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
         // Successfully registered
         navigate('/home');
       } else {
